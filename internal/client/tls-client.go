@@ -12,7 +12,6 @@ import (
 func SetupTLSClient() {
     log.SetFlags(log.Lshortfile)
 
-    // Lees het CA-certificaat in
     cert, err := os.ReadFile(secrets.CertAuthPath)
     if err != nil {
         log.Fatalf("Failed to read certificate file: %v", err)
@@ -27,7 +26,7 @@ func SetupTLSClient() {
         RootCAs: caCertPool,
     }
 
-    // Maak een TLS-verbinding met de server
+    // TODO: Make address based on variable instead
     conn, err := tls.Dial("tcp", "localhost:443", conf)
     if err != nil {
         log.Fatalf("Failed to connect to server: %v", err)
