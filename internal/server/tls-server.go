@@ -10,7 +10,7 @@ import (
 	"github.com/nielsjaspers/cls/secrets"
 )
 
-func SetupTLS() {
+func SetupTLSServer() {
 	log.SetFlags(log.Lshortfile)
 
 	certificate, err := tls.LoadX509KeyPair(secrets.ServerCrtPath, secrets.ServerKeyPath)
