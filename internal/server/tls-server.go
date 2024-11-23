@@ -3,7 +3,6 @@ package server
 import (
 	"bufio"
 	"crypto/tls"
-	"fmt"
 	"io"
 	"log"
 	"net"
