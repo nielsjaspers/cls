@@ -35,7 +35,6 @@ func SetupTLS() {
 			log.Printf("Connection failed: %v", err)
 			continue // try again
 		}
-		fmt.Printf("%v", conn)
 
 		tlsConn, ok := conn.(*tls.Conn)
 		if ok {
