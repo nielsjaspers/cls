@@ -75,7 +75,7 @@ func handleConnection(conn net.Conn) {
 
 		log.Printf("Received: %s", msg)
 
-		_, err = conn.Write([]byte("world\n"))
+		_, err = conn.Write([]byte("Message recieved, hello client!\n"))
 		if err != nil {
 			log.Printf("Error writing: %v", err)
 			return
