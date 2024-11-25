@@ -6,6 +6,8 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
+	"strings"
 
 	"github.com/nielsjaspers/cls/secrets"
 )
@@ -40,7 +42,7 @@ func SetupTLSServer() {
 			err := tlsConn.Handshake()
 			if err != nil {
 				log.Printf("TLS handshake failed: %v", err)
-				return
+				continue
 			}
 
 			state := tlsConn.ConnectionState()
@@ -56,27 +58,54 @@ func SetupTLSServer() {
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
-	// debugging
+	// Debugging
 	log.Println("Client connected")
 
+	// Specify the file path 
+    // Currently hardcoded as this is a proof of concept
+	filePath := "~/received/received_file.jpeg" 
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Printf("Error getting home directory: %v", err)
+		return
+	}
+	filePath = strings.Replace(filePath, "~", homeDir, 1)
+
+	// Open file for writing (create or truncate)
+	file, err := os.Create(filePath)
+	if err != nil {
+		log.Printf("Error creating file: %v", err)
+		return
+	}
+	defer file.Close()
+
+	// Read file content from connection and write it to the file
 	r := bufio.NewReader(conn)
+	buf := make([]byte, 4096) // 4KB chunks
 	for {
-		msg, err := r.ReadString('\n')
+		n, err := r.Read(buf)
 		if err != nil {
 			if err == io.EOF {
-				log.Println("Client disconnected")
-			} else {
-				log.Printf("Error reading: %v", err)
+				log.Println("File transfer complete")
+				break
 			}
+			log.Printf("Error reading: %v", err)
 			return
 		}
 
-		log.Printf("Received: %s", msg)
-
-		_, err = conn.Write([]byte("Message recieved, hello client!\n"))
-		if err != nil {
-			log.Printf("Error writing: %v", err)
+		if _, err := file.Write(buf[:n]); err != nil {
+			log.Printf("Error writing to file: %v", err)
 			return
 		}
 	}
+
+	log.Printf("File successfully saved to %s", filePath)
+
+	// Respond to the client
+	_, err = conn.Write([]byte("File received successfully!\n"))
+	if err != nil {
+		log.Printf("Error writing to client: %v", err)
+	}
 }
+

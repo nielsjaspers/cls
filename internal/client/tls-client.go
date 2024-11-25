@@ -11,7 +11,7 @@ import (
 	"github.com/nielsjaspers/cls/secrets"
 )
 
-func SetupTLSClient() {
+func SetupTLSClient(f []byte) {
 	log.SetFlags(log.Lshortfile)
 
 	cert, err := os.ReadFile(secrets.CertAuthPath)
@@ -36,11 +36,20 @@ func SetupTLSClient() {
 
 	log.Println("Connected to server")
 
-	_, err = conn.Write([]byte("Hello Server!\n"))
-	if err != nil {
-		log.Printf("Error writing: %v", err)
-		return
-	}
+	// _, err = conn.Write([]byte("Hello Server!\n"))
+	// if err != nil {
+		// log.Printf("Error writing: %v", err)
+		// return
+	// }
+
+    
+    if len(f) > 0 {
+        _, err = conn.Write(f)
+        if err != nil {
+            log.Printf("Error writing: %v", err)
+            return
+        }
+    }
 
 	r := bufio.NewReader(conn)
 	for {
@@ -57,10 +66,7 @@ func SetupTLSClient() {
 		log.Printf("Received: %s", msg)
 	}
 
-	// TODO:    Wait before disconnecting from server
-	//          Have option to send message to server -- (and to get a response)
-
-	// TODO2:   Function to send file to server
-	//          Function to import file from server
-
 }
+
+
+
