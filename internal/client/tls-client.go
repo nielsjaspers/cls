@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -63,4 +64,24 @@ func SetupTLSClient() {
 	// TODO2:   Function to send file to server
 	//          Function to import file from server
 
+}
+
+// fileUpload changes file f to []byte for sending over tls
+// returns a byte array with file content, and an error if there is one 
+func fileUpload(f *os.File) ([]byte, error) {
+    fmt.Printf("%v", f)
+    return []byte(""), nil
+}
+
+// getRemoteFilePaths requests all remote paths of files currently on the server
+// returns a string array with paths to the files, and an error if there is one
+func getRemoteFilePaths() ([]string, error) { // Use TLS connection (conn) maybe as parameter ?
+    return []string{"",""}, nil
+}
+
+// getRemoteFile requests a single file with remote path p
+// returns a file and an error if there is one
+func getRemoteFile(p string) (os.File, error) {
+    fmt.Printf("%v", p)
+    return *os.NewFile(1, ""), nil
 }

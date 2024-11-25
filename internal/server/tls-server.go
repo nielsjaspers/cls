@@ -40,7 +40,7 @@ func SetupTLSServer() {
 			err := tlsConn.Handshake()
 			if err != nil {
 				log.Printf("TLS handshake failed: %v", err)
-				return
+				continue
 			}
 
 			state := tlsConn.ConnectionState()
