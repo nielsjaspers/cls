@@ -1,17 +1,23 @@
 package main
 
 import (
-	"os"
-    "fmt"
+	"fmt"
 	"github.com/nielsjaspers/cls/internal/arguments"
 	"github.com/nielsjaspers/cls/internal/client"
+	"os"
 )
 
 func main() {
-    args := arguments.InitArgs()
-	if err := args.Command.Execute(); err != nil {
-		fmt.Println(err)
+	fileContent, err := arguments.ExecuteCommand()
+	if err != nil {
+		fmt.Printf("Error while retrieving file content: %v", err)
 		os.Exit(1)
 	}
-    client.SetupTLSClient()
+
+	if len(fileContent) > 0 {
+		client.SetupTLSClient(fileContent) 
+	} else {
+		fmt.Println("No file content processed.")
+        os.Exit(1)
+	}
 }

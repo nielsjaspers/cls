@@ -3,43 +3,43 @@ package arguments
 import (
 	"fmt"
 
+	"github.com/nielsjaspers/cls/pkg"
 	"github.com/spf13/cobra"
 )
 
-type Args struct {
-	Command   *cobra.Command
-	FileBytes []byte
-	FilePath  string
-}
+// ExecuteCommand runs the root command and returns any file content processed.
+func ExecuteCommand() ([]byte, error) {
+	var fileContent []byte
 
-func InitArgs() *Args {
-    args := &Args{
-        Command: rootCmd(),
-    }
-    return args
-}
-
-func rootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "cls",
 		Short: "Command-Line file sharing",
 	}
 
-	rootCmd.AddCommand(testCmd())
+	shareCmd := &cobra.Command{
+		Use:     "share <file-path>",
+		Short:   "Share a file to a remote location",
+		Long:    "Provide the file path to share the file with the server.",
+		Example: "cls share <path/to/file>",
+		Args:    cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Read the file content and store it in fileContent
+			data, err := filehandler.FileUpload(args[0])
+			if err != nil {
+				return fmt.Errorf("failed to read file: %w", err)
+			}
+			fileContent = data
+			fmt.Printf("File content read: %d bytes\n", len(fileContent))
+			return nil
+		},
+	}
 
-	return rootCmd
+	rootCmd.AddCommand(shareCmd)
+
+	if err := rootCmd.Execute(); err != nil {
+		return nil, err
+	}
+
+	return fileContent, nil
 }
 
-func testCmd() *cobra.Command {
-    var testCmd = &cobra.Command{
-        Use: "test",
-        Short: "Short test message",
-        Args: cobra.ExactArgs(1),
-        Run: func(cmd *cobra.Command, args []string) {
-            var str = args[0]
-            fmt.Printf("Your argument: %v", str)
-        },
-    }
-    return testCmd
-    
-}
