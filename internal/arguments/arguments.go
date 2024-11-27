@@ -3,8 +3,6 @@ package arguments
 import (
 	"fmt"
 	"path/filepath"
-	"strings"
-
 	"github.com/nielsjaspers/cls/pkg"
 	"github.com/spf13/cobra"
 )
