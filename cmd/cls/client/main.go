@@ -14,8 +14,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	if len(fileContent) > 0 {
-		client.SetupTLSClient(fileContent) 
+	if len(fileContent.Content) > 0 {
+		client.SetupTLSClient(&fileContent) 
 	} else {
 		fmt.Println("No file content processed.")
         os.Exit(1)

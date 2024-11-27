@@ -2,12 +2,13 @@ package server
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"log"
 	"net"
 	"os"
-	"strings"
 
 	"github.com/nielsjaspers/cls/secrets"
 )
@@ -58,31 +59,55 @@ func SetupTLSServer() {
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
-	// Debugging
-	log.Println("Client connected")
+	r := bufio.NewReader(conn)
 
-	// Specify the file path 
-    // Currently hardcoded as this is a proof of concept
-	filePath := "~/received/received_file.jpeg" 
-
-	homeDir, err := os.UserHomeDir()
+	//Listen for filename (max 255 bytes)
+	filenameBuf := make([]byte, 255)
+	n, err := r.Read(filenameBuf)
 	if err != nil {
-		log.Printf("Error getting home directory: %v", err)
+		log.Printf("Error reading filename: %v", err)
 		return
 	}
-	filePath = strings.Replace(filePath, "~", homeDir, 1)
+	filename := string(bytes.Trim(filenameBuf[:n], "\x00\n"))
+	log.Printf("Received filename: %s", filename)
 
-	// Open file for writing (create or truncate)
-	file, err := os.Create(filePath)
+	// Respond with "NEXT_ITEM"
+	_, err = conn.Write([]byte("NEXT_ITEM\n"))
+	if err != nil {
+		log.Printf("Error sending response: %v", err)
+		return
+	}
+
+	// Listen for file extension (max 15 bytes)
+	extensionBuf := make([]byte, 15)
+	n, err = r.Read(extensionBuf)
+	if err != nil {
+		log.Printf("Error reading file extension: %v", err)
+		return
+	}
+	extension := string(bytes.Trim(extensionBuf[:n], "\x00\n"))
+	log.Printf("Received file extension: %s", extension)
+
+	// Respond with "NEXT_ITEM"
+	_, err = conn.Write([]byte("NEXT_ITEM\n"))
+	if err != nil {
+		log.Printf("Error sending response: %v", err)
+		return
+	}
+
+	filePath := fmt.Sprintf("%s", filename)
+
+	// Open the file for writing
+	homeDir, err := os.UserHomeDir()
+	file, err := os.Create(homeDir + "/" + filePath)
 	if err != nil {
 		log.Printf("Error creating file: %v", err)
 		return
 	}
 	defer file.Close()
 
-	// Read file content from connection and write it to the file
-	r := bufio.NewReader(conn)
-	buf := make([]byte, 4096) // 4KB chunks
+	// Listen for file content (no max size)
+	buf := make([]byte, 131072) // 128 kB chunks
 	for {
 		n, err := r.Read(buf)
 		if err != nil {
@@ -90,10 +115,17 @@ func handleConnection(conn net.Conn) {
 				log.Println("File transfer complete")
 				break
 			}
-			log.Printf("Error reading: %v", err)
+			log.Printf("Error reading file content: %v", err)
 			return
 		}
 
+		// Check if the received data contains the EOF marker
+		if bytes.Contains(buf[:n], []byte("EXIT_EOF_EXIT_EOF\n")) {
+			log.Println("EOF marker received, file transfer complete")
+			break
+		}
+
+		// Write the received content to the file
 		if _, err := file.Write(buf[:n]); err != nil {
 			log.Printf("Error writing to file: %v", err)
 			return
@@ -102,10 +134,9 @@ func handleConnection(conn net.Conn) {
 
 	log.Printf("File successfully saved to %s", filePath)
 
-	// Respond to the client
+	// Respond to the client after the file is fully received
 	_, err = conn.Write([]byte("File received successfully!\n"))
 	if err != nil {
-		log.Printf("Error writing to client: %v", err)
+		log.Printf("Error sending final response: %v", err)
 	}
 }
-
