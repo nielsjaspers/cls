@@ -63,7 +63,7 @@ func handleConnection(conn net.Conn) {
 
 	// Specify the file path 
     // Currently hardcoded as this is a proof of concept
-	filePath := "~/received/received_file.jpeg" 
+	filePath := "~/received/received_file.zip" 
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -82,7 +82,7 @@ func handleConnection(conn net.Conn) {
 
 	// Read file content from connection and write it to the file
 	r := bufio.NewReader(conn)
-	buf := make([]byte, 4096) // 4KB chunks
+	buf := make([]byte, 131072) // 128 kB chunks
 	for {
 		n, err := r.Read(buf)
 		if err != nil {
@@ -93,19 +93,21 @@ func handleConnection(conn net.Conn) {
 			log.Printf("Error reading: %v", err)
 			return
 		}
+        log.Printf("File successfully saved to %s", filePath)
 
+        // Respond to the client
+        // TODO - Make this send once after file has been fully received
+        _, err = conn.Write([]byte("File received successfully!\n"))
+
+        if err != nil {
+            log.Printf("Error writing to client: %v", err)
+        }
+        
 		if _, err := file.Write(buf[:n]); err != nil {
 			log.Printf("Error writing to file: %v", err)
 			return
 		}
 	}
 
-	log.Printf("File successfully saved to %s", filePath)
-
-	// Respond to the client
-	_, err = conn.Write([]byte("File received successfully!\n"))
-	if err != nil {
-		log.Printf("Error writing to client: %v", err)
-	}
 }
 

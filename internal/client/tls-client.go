@@ -38,18 +38,17 @@ func SetupTLSClient(f []byte) {
 
 	// _, err = conn.Write([]byte("Hello Server!\n"))
 	// if err != nil {
-		// log.Printf("Error writing: %v", err)
-		// return
+	// log.Printf("Error writing: %v", err)
+	// return
 	// }
 
-    
-    if len(f) > 0 {
-        _, err = conn.Write(f)
-        if err != nil {
-            log.Printf("Error writing: %v", err)
-            return
-        }
-    }
+	if len(f) > 0 {
+		_, err = conn.Write(f)
+		if err != nil {
+			log.Printf("Error writing: %v", err)
+			return
+		}
+	}
 
 	r := bufio.NewReader(conn)
 	for {
@@ -64,9 +63,9 @@ func SetupTLSClient(f []byte) {
 		}
 
 		log.Printf("Received: %s", msg)
+        // if msg == "You'll be disconnected shortly.\n" {
+            // break
+        // }
 	}
 
 }
-
-
-
