@@ -13,7 +13,7 @@ import (
 	"github.com/nielsjaspers/cls/secrets"
 )
 
-func SetupTLSServer() {
+func SetupTLSServer(fp string) {
 	log.SetFlags(log.Lshortfile)
 
 	certificate, err := tls.LoadX509KeyPair(secrets.ServerCrtPath, secrets.ServerKeyPath)
@@ -51,12 +51,13 @@ func SetupTLSServer() {
 		} else {
 			log.Println("Received non-TLS connection")
 		}
-		go handleConnection(conn)
+		go handleConnection(conn, fp)
 	}
 
 }
 
-func handleConnection(conn net.Conn) {
+func handleConnection(conn net.Conn, fp string) {
+    fmt.Printf("Given path: %v\n", fp)
 	defer conn.Close()
 
 	r := bufio.NewReader(conn)
@@ -95,16 +96,21 @@ func handleConnection(conn net.Conn) {
 		return
 	}
 
-	filePath := fmt.Sprintf("%s", filename)
+    var filePath string
+    if fp == ""{
+        filePath = fmt.Sprintf("%s", filename)
+    } else {
+        filePath = fmt.Sprintf("%s/%s", fp, filename)
+    }
 
 	// Open the file for writing
-	homeDir, err := os.UserHomeDir()
-	file, err := os.Create(homeDir + "/" + filePath)
-	if err != nil {
-		log.Printf("Error creating file: %v", err)
-		return
-	}
-	defer file.Close()
+    file, err := os.Create(filePath)
+    if err != nil {
+        log.Printf("Error creating file: %v", err)
+        return
+    }
+    defer file.Close()
+ 
 
 	// Listen for file content (no max size)
 	buf := make([]byte, 131072) // 128 kB chunks
