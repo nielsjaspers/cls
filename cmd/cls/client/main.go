@@ -16,10 +16,5 @@ func main() {
     var argsFixedSize [3]string
     copy(argsFixedSize[:], args)
 
-	if len(fileContent.Content) > 0 {
-		client.SetupTLSClient(&fileContent, &argsFixedSize) 
-	} else {
-		fmt.Println("No file content processed.")
-        os.Exit(1)
-	}
+    client.SetupTLSClient(&fileContent, &argsFixedSize) 
 }
