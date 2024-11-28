@@ -8,14 +8,16 @@ import (
 )
 
 func main() {
-	fileContent, err := arguments.ExecuteCommand()
+	fileContent, args, err := arguments.ExecuteCommand()
 	if err != nil {
 		fmt.Printf("Error while retrieving file content: %v", err)
 		os.Exit(1)
 	}
+    var argsFixedSize [3]string
+    copy(argsFixedSize[:], args)
 
 	if len(fileContent.Content) > 0 {
-		client.SetupTLSClient(&fileContent) 
+		client.SetupTLSClient(&fileContent, &argsFixedSize) 
 	} else {
 		fmt.Println("No file content processed.")
         os.Exit(1)

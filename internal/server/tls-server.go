@@ -51,13 +51,12 @@ func SetupTLSServer(fp string) {
 		} else {
 			log.Println("Received non-TLS connection")
 		}
-		go handleConnection(conn, fp)
+		go HandleConnection(conn, fp)
 	}
 
 }
 
-func handleConnection(conn net.Conn, fp string) {
-    fmt.Printf("Given path: %v\n", fp)
+func HandleConnection(conn net.Conn, fp string) {
 	defer conn.Close()
 
 	r := bufio.NewReader(conn)

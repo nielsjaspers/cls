@@ -12,7 +12,7 @@ import (
 	"github.com/nielsjaspers/cls/secrets"
 )
 
-func SetupTLSClient(f *arguments.FileData) {
+func SetupTLSClient(f *arguments.FileData, args *[3]string) {
 	log.SetFlags(log.Lshortfile)
 
 	cert, err := os.ReadFile(secrets.CertAuthPath)
@@ -38,58 +38,68 @@ func SetupTLSClient(f *arguments.FileData) {
 
 	r := bufio.NewReader(conn)
 
-	// Send filename
-	filename := f.Filename[:]
-	_, err = conn.Write(filename)
-	if err != nil {
-		log.Printf("Error sending filename: %v", err)
-		return
-	}
-	log.Println("Filename sent, waiting for response...")
+	if args[0] == "SHARE_FILE_SHARE_FILE" {
+        // Send filename
+        filename := f.Filename[:]
+        _, err = conn.Write(filename)
+        if err != nil {
+            log.Printf("Error sending filename: %v", err)
+            return
+        }
+        log.Println("Filename sent, waiting for response...")
 
-	// Wait for "NEXT_ITEM"
-	if !waitForNextItem(r) {
-		return
+        // Wait for "NEXT_ITEM"
+        if !waitForNextItem(r) {
+            return
+        }
+
+        // Send file extension
+        extension := f.Extension[:]
+        _, err = conn.Write(extension)
+        if err != nil {
+            log.Printf("Error sending file extension: %v", err)
+            return
+        }
+        log.Println("File extension sent, waiting for response...")
+
+        // Wait for "NEXT_ITEM"
+        if !waitForNextItem(r) {
+            return
+        }
+
+        // Send file content
+        _, err = conn.Write(f.Content)
+        if err != nil {
+            log.Printf("Error sending file content: %v", err)
+            return
+        }
+        log.Println("File content sent, waiting for final confirmation...")
+
+        // Send an EOF marker
+        _, err = conn.Write([]byte("EXIT_EOF_EXIT_EOF\n"))
+        if err != nil {
+            log.Printf("Error sending EOF marker: %v", err)
+            return
+        }
+
+        // Wait for the final message
+        finalMsg, err := r.ReadString('\n')
+        if err != nil {
+            log.Printf("Error reading final confirmation: %v", err)
+            return
+        }
+        log.Printf("Received from server: %s", strings.TrimSpace(finalMsg))
+
+        log.Println("Transfer complete, disconnecting.")
+
+	} else if args[0] == "LIST_ALL_LIST_ALL" {
+
+
+	} else if args[0] == "GET_FILE_GET_FILE" {
+
+
 	}
 
-	// Send file extension
-	extension := f.Extension[:]
-	_, err = conn.Write(extension)
-	if err != nil {
-		log.Printf("Error sending file extension: %v", err)
-		return
-	}
-	log.Println("File extension sent, waiting for response...")
-
-	// Wait for "NEXT_ITEM"
-	if !waitForNextItem(r) {
-		return
-	}
-
-	// Send file content
-	_, err = conn.Write(f.Content)
-	if err != nil {
-		log.Printf("Error sending file content: %v", err)
-		return
-	}
-	log.Println("File content sent, waiting for final confirmation...")
-
-	// Send an EOF marker
-	_, err = conn.Write([]byte("EXIT_EOF_EXIT_EOF\n"))
-	if err != nil {
-		log.Printf("Error sending EOF marker: %v", err)
-		return
-	}
-
-	// Wait for the final message
-	finalMsg, err := r.ReadString('\n')
-	if err != nil {
-		log.Printf("Error reading final confirmation: %v", err)
-		return
-	}
-	log.Printf("Received from server: %s", strings.TrimSpace(finalMsg))
-
-	log.Println("Transfer complete, disconnecting.")
 }
 
 func waitForNextItem(r *bufio.Reader) bool {
@@ -108,3 +118,20 @@ func waitForNextItem(r *bufio.Reader) bool {
 	log.Println("Received NEXT_ITEM, proceeding to the next step.")
 	return true
 }
+
+func listServerFiles(fp string) ([]string, error) {
+	var strFiles []string
+	files, err := os.ReadDir(fp)
+	if err != nil {
+		log.Printf("Error reading directory: %v", err)
+	}
+
+	for _, file := range files {
+		if !file.IsDir() {
+			strFiles = append(strFiles, file.Name())
+		}
+	}
+	return strFiles, nil
+}
+
+func sendFile(args []string) {}
