@@ -14,15 +14,29 @@ func FileUpload(p string) ([]byte, error) {
 	}
 	return data, nil
 }
+
 // GetRemoteFilePaths requests all remote paths of files currently on the server
-// returns a string array with paths to the files, and an error if there is one
-func GetRemoteFilePaths() ([]string, error) { // Use TLS connection (conn) maybe as parameter ?
-    return []string{"",""}, nil
+// returns a string array with paths to the files, or an error if there is one
+func GetRemoteFilePaths(path string) ([]string, error) {
+	var allFiles []string
+
+	files, err := os.ReadDir(path)
+	if err != nil {
+		fmt.Println("Error reading directory:", err)
+		return []string{"EOF"}, err
+	}
+
+	for _, file := range files {
+		if !file.IsDir() { // Check if it's not a directory
+			allFiles = append(allFiles, file.Name())
+		}
+	}
+	return allFiles, nil
 }
 
 // GetRemoteFile requests a single file with remote path p
 // Returns a file and an error if there is one
 func getRemoteFile(p string) (os.File, error) {
-    fmt.Printf("%v", p)
-    return *os.NewFile(1, ""), nil
+	fmt.Printf("%v", p)
+	return *os.NewFile(1, ""), nil
 }
