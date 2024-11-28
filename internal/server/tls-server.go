@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net"
 	"os"
 
 	"github.com/nielsjaspers/cls/secrets"
@@ -51,12 +50,12 @@ func SetupTLSServer(fp string) {
 		} else {
 			log.Println("Received non-TLS connection")
 		}
-		go HandleConnection(conn, fp)
+		go HandleConnection(tlsConn, fp)
 	}
 
 }
 
-func HandleConnection(conn net.Conn, fp string) {
+func HandleConnection(conn *tls.Conn, fp string) {
 	defer conn.Close()
 
 	r := bufio.NewReader(conn)
