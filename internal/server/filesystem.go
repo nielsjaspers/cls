@@ -3,15 +3,12 @@ package server
 import (
 	"log"
 	"os"
-
 	"github.com/spf13/cobra"
 )
 
-func InitRemotePath() (*cobra.Command, error) {
-    return handleServerCmds()
-}
-
-func handleServerCmds() (*cobra.Command, error) {
+// ExecuteRemotePath runs the server root command and returns a filepath string
+func ExecuteRemotePath() string {
+    var serverFilePath string
 
 	var rootCmd = &cobra.Command{
 		Use:   "cls",
@@ -29,13 +26,21 @@ func handleServerCmds() (*cobra.Command, error) {
 			"-P",
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := os.MkdirAll(args[0], os.ModePerm); err != nil {
+            fpath := args[0]
+			if err := os.MkdirAll(fpath, os.ModePerm); err != nil {
 				log.Fatalf("Error while creating directory '%v': %v", args[0], err)
 			}
+            serverFilePath = fpath
 		},
 	}
 
-    rootCmd.AddCommand(remotePathCmd)
-    
-    return rootCmd, nil
+	rootCmd.AddCommand(remotePathCmd)
+
+	if err := rootCmd.Execute(); err != nil {
+		panic(err)
+		// return nil, err
+	}
+
+    return serverFilePath
+
 }
