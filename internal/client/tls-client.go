@@ -38,68 +38,16 @@ func SetupTLSClient(f *arguments.FileData, args *[3]string) {
 
 	r := bufio.NewReader(conn)
 
-	if args[0] == "SHARE_FILE_SHARE_FILE" {
-        // Send filename
-        filename := f.Filename[:]
-        _, err = conn.Write(filename)
-        if err != nil {
-            log.Printf("Error sending filename: %v", err)
-            return
-        }
-        log.Println("Filename sent, waiting for response...")
-
-        // Wait for "NEXT_ITEM"
-        if !waitForNextItem(r) {
-            return
-        }
-
-        // Send file extension
-        extension := f.Extension[:]
-        _, err = conn.Write(extension)
-        if err != nil {
-            log.Printf("Error sending file extension: %v", err)
-            return
-        }
-        log.Println("File extension sent, waiting for response...")
-
-        // Wait for "NEXT_ITEM"
-        if !waitForNextItem(r) {
-            return
-        }
-
-        // Send file content
-        _, err = conn.Write(f.Content)
-        if err != nil {
-            log.Printf("Error sending file content: %v", err)
-            return
-        }
-        log.Println("File content sent, waiting for final confirmation...")
-
-        // Send an EOF marker
-        _, err = conn.Write([]byte("EXIT_EOF_EXIT_EOF\n"))
-        if err != nil {
-            log.Printf("Error sending EOF marker: %v", err)
-            return
-        }
-
-        // Wait for the final message
-        finalMsg, err := r.ReadString('\n')
-        if err != nil {
-            log.Printf("Error reading final confirmation: %v", err)
-            return
-        }
-        log.Printf("Received from server: %s", strings.TrimSpace(finalMsg))
-
-        log.Println("Transfer complete, disconnecting.")
-
-	} else if args[0] == "LIST_ALL_LIST_ALL" {
-
-
-	} else if args[0] == "GET_FILE_GET_FILE" {
-
-
+	// Process commands based on args[0]
+	switch args[0] {
+	case "SHARE_FILE_SHARE_FILE":
+		SendFile(f, args, r, conn)
+	case "LIST_ALL_LIST_ALL":
+	case "GET_FILE_GET_FILE":
+	default:
+		log.Println("Invalid command")
+        os.Exit(1)
 	}
-
 }
 
 func waitForNextItem(r *bufio.Reader) bool {
@@ -119,19 +67,71 @@ func waitForNextItem(r *bufio.Reader) bool {
 	return true
 }
 
-func listServerFiles(fp string) ([]string, error) {
-	var strFiles []string
-	files, err := os.ReadDir(fp)
-	if err != nil {
-		log.Printf("Error reading directory: %v", err)
+func SendFile(f *arguments.FileData, args *[3]string, r *bufio.Reader, conn *tls.Conn) {
+    // Send Share file marker
+    _, err := conn.Write([]byte(args[0])) 
+    if err != nil {
+        log.Printf("Error sending sharefile marker: %v", err)
+        return
+    }
+
+    // Wait for "NEXT_ITEM"
+	if !waitForNextItem(r) {
+		return
 	}
 
-	for _, file := range files {
-		if !file.IsDir() {
-			strFiles = append(strFiles, file.Name())
-		}
+	// Send filename
+    fileName := f.Filename[:]
+	_, err = conn.Write(fileName)
+	if err != nil {
+		log.Printf("Error sending filename: %v", err)
+		return
 	}
-	return strFiles, nil
+	log.Println("Filename sent, waiting for response...")
+
+	// Wait for "NEXT_ITEM"
+	if !waitForNextItem(r) {
+		return
+	}
+
+	// Send file extension
+    extension := f.Extension[:]
+	_, err = conn.Write(extension)
+	if err != nil {
+		log.Printf("Error sending file extension: %v", err)
+		return
+	}
+	log.Println("File extension sent, waiting for response...")
+
+	// Wait for "NEXT_ITEM"
+	if !waitForNextItem(r) {
+		return
+	}
+
+	// Send file content
+	_, err = conn.Write(f.Content)
+	if err != nil {
+		log.Printf("Error sending file content: %v", err)
+		return
+	}
+	log.Println("File content sent, waiting for final confirmation...")
+
+	// Send an EOF marker
+	_, err = conn.Write([]byte("EXIT_EOF_EXIT_EOF\n"))
+	if err != nil {
+		log.Printf("Error sending EOF marker: %v", err)
+		return
+	}
+
+	// Wait for the final message
+	finalMsg, err := r.ReadString('\n')
+	if err != nil {
+		log.Printf("Error reading final confirmation: %v", err)
+		return
+	}
+	log.Printf("Received from server: %s", strings.TrimSpace(finalMsg))
+
+	log.Println("File transfer complete.")
 }
 
-func sendFile(args []string) {}
+

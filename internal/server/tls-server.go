@@ -61,7 +61,24 @@ func HandleConnection(conn net.Conn, fp string) {
 
 	r := bufio.NewReader(conn)
 
-	//Listen for filename (max 255 bytes)
+    // Listen for marker
+	markerBuf := make([]byte, 32)
+	m, err := r.Read(markerBuf)
+	if err != nil {
+		log.Printf("Error reading filename: %v", err)
+		return
+	}
+	marker := string(bytes.Trim(markerBuf[:m], "\x00\n"))
+	log.Printf("Received marker: %s", marker)
+
+    // Respond with "NEXT_ITEM"
+	_, err = conn.Write([]byte("NEXT_ITEM\n"))
+	if err != nil {
+		log.Printf("Error sending response: %v", err)
+		return
+	}
+
+	// Listen for filename (max 255 bytes)
 	filenameBuf := make([]byte, 255)
 	n, err := r.Read(filenameBuf)
 	if err != nil {
@@ -95,21 +112,20 @@ func HandleConnection(conn net.Conn, fp string) {
 		return
 	}
 
-    var filePath string
-    if fp == ""{
-        filePath = fmt.Sprintf("%s", filename)
-    } else {
-        filePath = fmt.Sprintf("%s/%s", fp, filename)
-    }
+	var filePath string
+	if fp == "" {
+		filePath = fmt.Sprintf("%s", filename)
+	} else {
+		filePath = fmt.Sprintf("%s/%s", fp, filename)
+	}
 
 	// Open the file for writing
-    file, err := os.Create(filePath)
-    if err != nil {
-        log.Printf("Error creating file: %v", err)
-        return
-    }
-    defer file.Close()
- 
+	file, err := os.Create(filePath)
+	if err != nil {
+		log.Printf("Error creating file: %v", err)
+		return
+	}
+	defer file.Close()
 
 	// Listen for file content (no max size)
 	buf := make([]byte, 131072) // 128 kB chunks
