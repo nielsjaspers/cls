@@ -16,8 +16,6 @@ RUN go build cmd/cls/server/main.go
 # Expose the port your app runs on
 EXPOSE 443
 
-RUN mkdir ~/received
-
 # Command to run the application
-CMD ["./main"]
+CMD ["./main", "path", "/received"]
 

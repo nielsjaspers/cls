@@ -2,12 +2,21 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
+
 	"github.com/nielsjaspers/cls/internal/arguments"
 	"github.com/nielsjaspers/cls/internal/client"
-	"os"
 )
 
 func main() {
+    clientsideFolder, err := os.UserHomeDir()
+    if err != nil {
+        log.Fatalf("Error getting user home dir: %v", err)
+    }
+
+    os.MkdirAll(clientsideFolder + "/cls-received", os.ModePerm)
+
 	fileContent, args, err := arguments.ExecuteCommand()
 	if err != nil {
 		fmt.Printf("Error while retrieving file content: %v", err)
@@ -17,4 +26,5 @@ func main() {
     copy(argsFixedSize[:], args)
 
     client.SetupTLSClient(&fileContent, &argsFixedSize) 
+
 }
