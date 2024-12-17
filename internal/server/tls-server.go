@@ -2,13 +2,14 @@ package server
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/tls"
 	"fmt"
-	"io"
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 
+	"github.com/nielsjaspers/cls/internal/arguments"
 	filehandler "github.com/nielsjaspers/cls/pkg"
 	"github.com/nielsjaspers/cls/secrets"
 )
@@ -64,106 +65,13 @@ func HandleConnection(conn *tls.Conn, fp string) {
 	r := bufio.NewReader(conn)
 
 	// Listen for marker
-	markerBuf := make([]byte, 32)
-	m, err := r.Read(markerBuf)
+	marker, err := filehandler.ListenForMarker(r)
 	if err != nil {
-		log.Printf("Error reading marker: %v", err)
-		return
+		panic(err)
 	}
-	marker := string(bytes.Trim(markerBuf[:m], "\x00\n"))
 
 	if marker == "SHARE_FILE_SHARE_FILE" {
-
-		// Respond with "NEXT_ITEM"
-		_, err = conn.Write([]byte("NEXT_ITEM\n"))
-		if err != nil {
-			log.Printf("Error sending response: %v", err)
-			return
-		}
-
-		// Listen for filename (max 255 bytes)
-		filenameBuf := make([]byte, 255)
-		n, err := r.Read(filenameBuf)
-		if err != nil {
-			log.Printf("Error reading filename: %v", err)
-			return
-		}
-		filename := string(bytes.Trim(filenameBuf[:n], "\x00\n"))
-		log.Printf("Received filename: %s", filename)
-
-		// Respond with "NEXT_ITEM"
-		_, err = conn.Write([]byte("NEXT_ITEM\n"))
-		if err != nil {
-			log.Printf("Error sending response: %v", err)
-			return
-		}
-
-		// Listen for file extension (max 15 bytes)
-		extensionBuf := make([]byte, 15)
-		n, err = r.Read(extensionBuf)
-		if err != nil {
-			log.Printf("Error reading file extension: %v", err)
-			return
-		}
-		extension := string(bytes.Trim(extensionBuf[:n], "\x00\n"))
-		log.Printf("Received file extension: %s", extension)
-
-		// Respond with "NEXT_ITEM"
-		_, err = conn.Write([]byte("NEXT_ITEM\n"))
-		if err != nil {
-			log.Printf("Error sending response: %v", err)
-			return
-		}
-
-		var filePath string
-		if fp == "" {
-			filePath = fmt.Sprintf("%s", filename)
-		} else {
-			filePath = fmt.Sprintf("%s/%s", fp, filename)
-		}
-
-		// Open the file for writing
-		file, err := os.Create(filePath)
-		if err != nil {
-			log.Printf("Error creating file: %v", err)
-			return
-		}
-		defer file.Close()
-
-		// Listen for file content (no max size)
-		buf := make([]byte, 131072) // 128 kB chunks
-		for {
-			n, err := r.Read(buf)
-			if err != nil {
-				if err == io.EOF {
-					log.Println("File transfer complete")
-					break
-				}
-				log.Printf("Error reading file content: %v", err)
-				return
-			}
-
-			// Check if the received data contains the EOF marker
-			if bytes.Contains(buf[:n], []byte("EXIT_EOF_EXIT_EOF\n")) {
-				log.Println("EOF marker received, file transfer complete")
-				break
-			}
-
-			// Write the received content to the file
-			if _, err := file.Write(buf[:n]); err != nil {
-				log.Printf("Error writing to file: %v", err)
-				return
-			}
-		}
-
-		log.Printf("File successfully saved to %s", filePath)
-
-		// Respond to the client after the file is fully received
-		_, err = conn.Write([]byte("File received successfully!\n"))
-		if err != nil {
-			log.Printf("Error sending final response: %v", err)
-		}
-
+		filehandler.HandleFileTransfer(conn, r, fp)
 	} else if marker == "LIST_ALL_LIST_ALL" {
 		// Log received marker
 		log.Printf("Received marker: %v", marker)
@@ -173,7 +81,7 @@ func HandleConnection(conn *tls.Conn, fp string) {
 		if err != nil {
 			log.Printf("Error retrieving files: %v", err)
 		}
-		fmt.Printf("Retrieved files: %v", files)
+		fmt.Printf("Retrieved files: %v\n", files)
 
 		// Respond with "NEXT_ITEM"
 		_, err = conn.Write([]byte("NEXT_ITEM\n"))
@@ -199,7 +107,110 @@ func HandleConnection(conn *tls.Conn, fp string) {
 
 	} else if marker == "GET_FILE_GET_FILE" {
 		log.Printf("Received marker: %v", marker)
+		sendFile(r, conn, fp)
 
 	}
 
+}
+
+func sendFile(r *bufio.Reader, conn *tls.Conn, fp string) {
+	f := arguments.FileData{}
+
+	// Send Share file marker
+	_, err := conn.Write([]byte("SHARE_FILE_SHARE_FILE\n"))
+	if err != nil {
+		log.Printf("Error sending sharefile marker: %v", err)
+		return
+	}
+
+	// Wait for "NEXT_ITEM"
+	if !filehandler.ReadyForNextItem(r) {
+		return
+	}
+
+	// Get filename
+	msg, err := r.ReadString('\n')
+	msg = strings.TrimSpace(msg)
+
+    // Wait for "NEXT_ITEM"
+    if !filehandler.ReadyForNextItem(r) {
+        return
+    }
+
+	// Check if file exists
+	fullPath := filepath.Join(fp, msg)
+	fmt.Printf("Filename: %v\n", fullPath)
+	_, err = os.Stat(fullPath)
+	if err != nil {
+		fmt.Printf("err: %v\n", err)
+		// File does not exist
+		conn.Write([]byte("File does not exist\n"))
+		return
+	}
+
+	// Put filedata into 'f'
+	fN := filepath.Base(fullPath) // [f]ile[N]ame
+	copy(f.Filename[:], fN)
+	fE := filepath.Ext(fullPath) // [f]ile[E]xtension
+	copy(f.Extension[:], fE)
+	fC, err := os.ReadFile(fullPath) // [f]ile[C]ontent
+	if err != nil {
+		log.Printf("Error reading local file: %v\n", err)
+		return
+	}
+	copy(f.Content, fC)
+
+	// Send filename
+	fileName := f.Filename[:]
+	_, err = conn.Write(fileName)
+	if err != nil {
+		log.Printf("Error sending filename: %v", err)
+		return
+	}
+	log.Println("Filename sent, waiting for response...")
+
+	// Wait for "NEXT_ITEM"
+	if !filehandler.ReadyForNextItem(r) {
+		return
+	}
+
+	// Send file extension
+	extension := f.Extension[:]
+	_, err = conn.Write(extension)
+	if err != nil {
+		log.Printf("Error sending file extension: %v", err)
+		return
+	}
+	log.Println("File extension sent, waiting for response...")
+
+	// Wait for "NEXT_ITEM"
+	if !filehandler.ReadyForNextItem(r) {
+		return
+	}
+
+	// Send file content
+	_, err = conn.Write(fC)
+	if err != nil {
+		log.Printf("Error sending file content: %v", err)
+		return
+	}
+
+	log.Println("File content sent, waiting for final confirmation...")
+
+	// Send an EOF marker
+	_, err = conn.Write([]byte("EXIT_EOF_EXIT_EOF\n"))
+	if err != nil {
+		log.Printf("Error sending EOF marker: %v", err)
+		return
+	}
+
+	// Wait for the final message
+	finalMsg, err := r.ReadString('\n')
+	if err != nil {
+		log.Printf("Error reading final confirmation: %v", err)
+		return
+	}
+	log.Printf("Received from server: %s", strings.TrimSpace(finalMsg))
+
+	log.Println("File transfer complete.")
 }

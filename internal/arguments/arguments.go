@@ -82,7 +82,7 @@ func ExecuteCommand() (FileData, []string, error) {
 		Args:    cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			commandData[0] = "GET_FILE_GET_FILE" // Get file marker for server
-			commandData[1] = args[0]             // Remote path to file
+			commandData[1] = args[0]             // Remote file
 			commandData[2] = args[1]             // Path to local destination
 		},
 	}

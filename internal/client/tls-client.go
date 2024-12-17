@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/nielsjaspers/cls/internal/arguments"
+	filehandler "github.com/nielsjaspers/cls/pkg"
 	"github.com/nielsjaspers/cls/secrets"
 )
 
@@ -43,7 +44,7 @@ func SetupTLSClient(f *arguments.FileData, args *[3]string) {
 	// Process commands based on args[0]
 	switch args[0] {
 	case "SHARE_FILE_SHARE_FILE":
-		SendFile(f, args, r, conn)
+		sendFile(f, args, r, conn)
 	case "LIST_ALL_LIST_ALL":
 		fileList, err := getList(args, r, conn)
 		if err != nil {
@@ -51,27 +52,39 @@ func SetupTLSClient(f *arguments.FileData, args *[3]string) {
 		}
 		log.Printf("Retrieved files: %v", fileList)
 	case "GET_FILE_GET_FILE":
+		err := getFile(args, r, conn)
+		if err != nil {
+			log.Fatalf("Error getting remote file: %v", err)
+		}
 	default:
 		log.Println("Invalid command")
 		os.Exit(1)
 	}
 }
 
-func waitForNextItem(r *bufio.Reader) bool {
-	msg, err := r.ReadString('\n')
+func getFile(args *[3]string, r *bufio.Reader, conn *tls.Conn) error {
+	_, err := conn.Write([]byte(args[0] + "\n"))
 	if err != nil {
-		log.Printf("Error reading server response: %v", err)
-		return false
+		return fmt.Errorf("Error sending Get File Marker: %v", err)
+	}
+	marker, err := filehandler.ListenForMarker(r)
+	if err != nil {
+		log.Fatalf("Error while listening for marker: %v\n", err)
 	}
 
-	msg = strings.TrimSpace(msg)
-	if msg != "NEXT_ITEM" {
-		log.Printf("Unexpected server response: %s", msg)
-		return false
+	conn.Write([]byte("NEXT_ITEM\n"))
+
+	if marker == "SHARE_FILE_SHARE_FILE" {
+		// Send requested filename
+		_, err := conn.Write([]byte(args[1] + "\n"))
+		if err != nil {
+			return fmt.Errorf("Error sending filename: %v", err)
+		}
+		// conn.Write([]byte("NEXT_ITEM\n"))
+		filehandler.HandleFileTransfer(conn, r, args[2])
 	}
 
-	log.Println("Received NEXT_ITEM, proceeding to the next step.")
-	return true
+	return nil
 }
 
 func getList(args *[3]string, r *bufio.Reader, conn *tls.Conn) ([]string, error) {
@@ -80,11 +93,11 @@ func getList(args *[3]string, r *bufio.Reader, conn *tls.Conn) ([]string, error)
 	// Send get list marker
 	_, err := conn.Write([]byte(args[0] + "\n"))
 	if err != nil {
-		return nil, fmt.Errorf("error sending list all marker: %v", err)
+		return nil, fmt.Errorf("Error sending List All Marker: %v", err)
 	}
 
 	// Wait for "NEXT_ITEM"
-	if !waitForNextItem(r) {
+	if !filehandler.ReadyForNextItem(r) {
 		return nil, fmt.Errorf("did not receive expected NEXT_ITEM response")
 	}
 
@@ -115,7 +128,7 @@ func getList(args *[3]string, r *bufio.Reader, conn *tls.Conn) ([]string, error)
 	return remoteFiles, nil
 }
 
-func SendFile(f *arguments.FileData, args *[3]string, r *bufio.Reader, conn *tls.Conn) {
+func sendFile(f *arguments.FileData, args *[3]string, r *bufio.Reader, conn *tls.Conn) {
 	// Send Share file marker
 	_, err := conn.Write([]byte(args[0]))
 	if err != nil {
@@ -124,7 +137,7 @@ func SendFile(f *arguments.FileData, args *[3]string, r *bufio.Reader, conn *tls
 	}
 
 	// Wait for "NEXT_ITEM"
-	if !waitForNextItem(r) {
+	if !filehandler.ReadyForNextItem(r) {
 		return
 	}
 
@@ -138,7 +151,7 @@ func SendFile(f *arguments.FileData, args *[3]string, r *bufio.Reader, conn *tls
 	log.Println("Filename sent, waiting for response...")
 
 	// Wait for "NEXT_ITEM"
-	if !waitForNextItem(r) {
+	if !filehandler.ReadyForNextItem(r) {
 		return
 	}
 
@@ -152,7 +165,7 @@ func SendFile(f *arguments.FileData, args *[3]string, r *bufio.Reader, conn *tls
 	log.Println("File extension sent, waiting for response...")
 
 	// Wait for "NEXT_ITEM"
-	if !waitForNextItem(r) {
+	if !filehandler.ReadyForNextItem(r) {
 		return
 	}
 
@@ -181,4 +194,3 @@ func SendFile(f *arguments.FileData, args *[3]string, r *bufio.Reader, conn *tls
 
 	log.Println("File transfer complete.")
 }
-
