@@ -45,7 +45,7 @@ CLS (Command Line Share) is a lightweight command-line tool written in Go for tr
    subjectAltName = DNS:localhost
    ```
 
-4. Run the \`keygen.sh\` script at the project root to generate and sign the certificates used by the client and server:
+4. Run the `keygen.sh` script at the project root to generate and sign the certificates used by the client and server:
 
    ```
    ./keygen.sh
