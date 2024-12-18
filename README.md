@@ -108,10 +108,10 @@ To get a list of all files available on the server:
 
 #### Retrieve a File
 
-To download a specific file from the server:
+To download a specific file from the server and download it to a local path:
 
 ```bash
-./client get <remote/file>
+./client get <remote/file> <local/path>
 ```
 
 ## Example
@@ -138,10 +138,10 @@ Start the server and set the folder for incoming files:
    ./client list
    ```
 
-3. Retrieve a file from the server:
+3. Retrieve a file from the server and save it to `home/user/`:
 
    ```bash
-   ./client get report.pdf
+   ./client get report.pdf home/user/
    ```
 
 ## Requirements
