@@ -1,1 +1,4 @@
 server-crt/
+out/
+
+**/.DS_Store
