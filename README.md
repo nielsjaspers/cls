@@ -1,3 +1,9 @@
+> [!IMPORTANT]
+> `cls` has been deprecated for a simpler alternative, requiring much less setup
+>
+> Visit [`clifs`](https://github.com/nielsjaspers/clifs) instead!
+
+
 # CLS (Command Line Share)
 
 CLS (Command Line Share) is a lightweight command-line tool written in Go for transferring files between a client and a server on a local network. It's simple, fast, and efficient, making it a great solution for local file sharing.
